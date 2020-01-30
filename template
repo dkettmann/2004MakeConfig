@@ -1,0 +1,284 @@
+
+
+
+version 12.1
+service timestamps debug datetime
+service timestamps log datetime
+service password-encryption
+
+hostname cnbr$branch
+
+logging buffered 5000 debugging
+no logging console
+aaa new-model
+aaa authentication login default group tacacs+ enable local
+aaa authentication enable default group tacacs+ enable
+aaa authorization exec default group tacacs+ if-authenticated 
+aaa authorization commands 15 default group tacacs+ none 
+aaa accounting exec default start-stop group tacacs+
+aaa accounting commands 15 default start-stop group tacacs+
+aaa accounting network default start-stop group tacacs+
+aaa accounting connection default start-stop group tacacs+
+aaa accounting system default start-stop group tacacs+
+enable secret 5 $1$Lx89$ICUDqH1h5waY0f2CH48is/
+
+username $dburtr password 7 051B14062E5E471D00
+
+
+
+
+clock timezone GMT -5
+clock summer-time GMT recurring
+ip subnet-zero
+no ip source-route
+no ip finger
+ip telnet source-interface Loopback0
+ip tftp source-interface loopback0
+no ip domain-lookup
+ip host modem 2065 $eth
+ip domain-name namd.nsroot.net
+
+no ip bootp server
+ip ssh time-out 120
+ip ssh authentication-retries 3
+lane client flush
+chat-script branch "" "AT Z" OK "ATDT \T" TIMEOUT 30 CONNECT \c
+
+
+
+
+
+crypto isakmp policy 10
+ encr 3des
+ authentication rsa-encr
+ group 2
+crypto isakmp keepalive 120
+
+
+crypto ipsec transform-set citi-trans ah-sha-hmac esp-3des 
+
+crypto key pubkey-chain rsa
+ addressed-key $wroute encryption
+  address $wroute
+  key-string
+   $wencryptkey
+  quit
+ addressed-key $broute encryption
+  address $broute
+  key-string
+   $bencryptkey
+  quit
+
+ crypto map $wcorertr local-address Serial0/0.1
+ crypto map $wcorertr 10 ipsec-isakmp   
+ set peer $wroute
+ set transform-set citi-trans 
+ match address $wcap
+
+crypto map $bcorertr local-address Serial0/0.2
+crypto map $bcorertr 10 ipsec-isakmp   
+ set peer $broute
+ set transform-set citi-trans 
+ match address $bcap
+
+
+source-bridge ring-group 2075
+dlsw local-peer peer-id $loop
+dlsw remote-peer 0 tcp $pripeer
+dlsw remote-peer 0 tcp $secpeer backup-peer $pripeer
+dlsw remote-peer 0 tcp $thrpeer
+
+
+
+interface Loopback0
+ ip address $loop 255.255.255.255
+
+interface Ethernet0/0
+ description connects to hub
+ ip address $eth 255.255.255.224
+ ip helper-address 169.188.27.18
+ ip helper-address 163.39.251.182
+ no ip proxy-arp
+
+interface Serial0/0
+ description 56k DSU/CSU
+ mtu 4470
+ bandwidth 56
+ backup delay 30 600
+ backup interface Async65
+ no ip address
+ encapsulation frame-relay
+ no fair-queue
+ frame-relay lmi-type ansi
+
+interface Serial0/0.1 point-to-point
+ description connects to Weehawken $wcorertr
+ bandwidth 32
+ ip address $sub1ip 255.255.255.252
+ ip access-group 101 in
+ no arp frame-relay
+ frame-relay interface-dlci $dlci1
+ crypto map $wcorertr
+
+interface Serial0/0.2 point-to-point
+ description connects to Baltimore $bcorertr
+ bandwidth 8
+ ip address $sub2ip 255.255.255.252
+ ip access-group 101 in
+ no arp frame-relay
+ frame-relay interface-dlci $dlci2
+
+
+interface Serial1/0
+ description connects to server
+ bandwidth 19
+ no ip address
+ encapsulation sdlc
+ no keepalive
+ nrzi-encoding
+ clockrate 19200
+ sdlc role primary
+ sdlc vmac 4000.c$vmac00
+ sdlc address C1
+ sdlc xid C1 $xid
+ sdlc partner 4000.3870.0001 C1
+ sdlc dlsw C1 
+
+interface Async65
+ ip address negotiated
+ encapsulation ppp
+ dialer in-band
+ dialer idle-timeout 3600
+ dialer enable-timeout 10
+ dialer string $dbunum
+ dialer-group 2
+ async default routing
+ async mode interactive
+ no peer default ip address
+ ppp authentication chap
+
+ip classless
+no ip forward-protocol udp tftp
+no ip forward-protocol udp domain
+no ip forward-protocol udp time
+no ip forward-protocol udp netbios-ns
+no ip forward-protocol udp netbios-dgm
+no ip forward-protocol udp tacacs
+ip route 0.0.0.0 0.0.0.0 $wroute
+ip route 0.0.0.0 0.0.0.0 $broute 150
+ip route 0.0.0.0 0.0.0.0 Async65 240
+ip tacacs source-interface Loopback0
+no ip http server
+
+
+ip access-list extended $wcap
+ permit ip $lanseg 0.0.0.31 any
+ permit ip host $loop any
+ip access-list extended $bcap
+ permit ip $lanseg 0.0.0.31 any
+ permit ip host $loop any
+ permit tcp host $loop any
+logging history informational
+logging trap notifications
+logging facility syslog
+logging source-interface Loopback0
+logging 161.161.219.213
+access-list 5 permit 162.124.134.250
+access-list 5 permit 162.124.133.243
+access-list 5 permit 162.124.133.244
+access-list 5 permit 161.161.236.32
+access-list 5 permit 161.161.236.30
+access-list 5 permit 161.161.236.31
+access-list 5 permit 161.161.236.24
+access-list 5 permit 161.161.236.25
+access-list 5 permit 161.161.236.22
+access-list 5 permit 161.161.236.23
+access-list 5 permit 161.161.219.192 0.0.0.63
+access-list 5 deny   any log
+access-list 8 deny   any log
+access-list 101 deny   53 any any
+access-list 101 deny   55 any any
+access-list 101 deny   77 any any
+access-list 101 deny   pim any any
+access-list 101 permit ip 161.161.219.192 0.0.0.63 any
+access-list 101 deny   tcp any host $hubip eq telnet
+access-list 101 deny   tcp any host $hubip eq www
+access-list 101 deny   icmp any host $hubip echo
+access-list 101 permit ip any any
+dialer-list 2 protocol ip list 101
+tacacs-server host 163.39.229.90
+tacacs-server host 163.39.250.26
+tacacs-server key C!+iF!9383101
+snmp-server engineID local 0000000902000050547D0955
+snmp-server community 4E5347 RO 5
+snmp-server community ILMI RW 8
+snmp-server community cable-docsis RW 8
+snmp-server trap-source Loopback0
+snmp-server packetsize 2048
+snmp-server enable traps snmp
+snmp-server enable traps config
+snmp-server enable traps entity
+snmp-server enable traps envmon
+snmp-server enable traps rtr
+snmp-server enable traps syslog
+snmp-server enable traps dlsw
+snmp-server host 161.161.219.213 4E5347 
+bridge 2 protocol ieee
+
+
+banner motd 
+   +----------------------------------------------------------------------+
+   |   This system is for the use of authorized users only.               |
+   |   Individuals using this system without authority, or in             |
+   |   excess of their authority, are subject to having all of their      |
+   |   activities on this system monitored and recorded by system         |
+   |   personnel.                                                         |
+   |                                                                      |
+   |   In the course of monitoring individuals improperly using this      |
+   |   system, or in the course of system maintenance, the activities     |
+   |   of authorized users may also be monitored.                         |
+   |                                                                      |
+   |   Anyone using this system expressly consents to such monitoring     |
+   |   and is advised that if such monitoring reveals possible            |
+   |   evidence of criminal activity, system personnel may provide the    |
+   |   evidence of such monitoring to law enforcement officials.          |
+   |                                                                      |
+   |                                                                      |
+   |       Network Support Group                                          |
+   |       314-551-3460                                                   |
+   |                                                                      |
+   |                                Please disconnect if not authorized!! |
+   +----------------------------------------------------------------------+
+ 
+
+line con 0
+ session-timeout 15 
+ exec-timeout 15 0
+ password 7 130B0415051F03
+ transport input none
+line aux 0
+ session-timeout 15 
+ no exec-banner
+ exec-timeout 15 0
+ timeout login response 90
+ password 7 060157366C573D160A
+ script dialer branch
+ modem InOut
+ transport input telnet
+ transport output telnet
+ speed 115200
+ flowcontrol hardware
+line vty 0 4
+ session-timeout 15 
+ exec-timeout 15 0
+ password 7 0205074B0707012C43
+ transport input telnet
+ transport output telnet
+
+ntp clock-period 17209013
+ntp source Loopback0
+ntp server 192.193.252.46
+ntp server 192.193.251.41
+ntp server 192.193.252.41
+no scheduler allocate
+end

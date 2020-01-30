@@ -1,0 +1,361 @@
+#!/usr/bin/perl
+use Getopt::Std qw(getopts);
+getopts("utw", \%option);
+
+#Print Usage
+if ($option{u})
+	{
+	print "\n", 'Usage: makeconfig [-ut] <branch number>', "\n";
+	exit;
+	}
+
+
+#If t flag is present use Getronics Testing Template
+if ($option{t})
+	{
+	open (TEMP, "/home/radar/dbfiles/template");
+	}
+else
+	{
+	open (TEMP, "/home/radar/scriptfiles/template");
+	}
+
+#Make sure we have both arguments
+unless ($ARGV[0])
+	{
+	print "Missing Branch Number!\n";
+	exit;
+	}
+unless ($ARGV[1])
+	{
+	print "Makeconfig programs requires 2nd argument of ICORE\n";
+	exit;
+	}
+#Assign Arguments and Split up
+$branch = $ARGV[0];
+$icore = $ARGV[1];
+open(OUT, ">/home/radar/dbfiles/$branch.tpl");
+
+#For nslookup machines
+#$cnbrlkp = `nslookup cnbr$branch`;
+#($junk, $junk1, $junk2, $junk3, $result) = split /\n/, $cnbrlkp;
+#($address, $ip) = split /\n/, $result;
+
+#For host machines
+$result = `host cnbr$branch`;
+
+
+
+$result =~ m/(\d+\.\d+\.\d+\.\d+)/;
+$stripped = $1;
+$cnbr = $stripped;
+chomp($cnbr);
+($a, $b, $c, $oct4) = split /\./, $cnbr;
+if ($oct4 eq 254) {
+$d = 0;
+}
+if ($oct4 eq 253) {
+$d = 32;
+}
+if ($oct4 eq 252) {
+$d = 64;
+}
+if ($oct4 eq 251) {
+$d = 96;
+}
+if ($oct4 eq 250) {
+$d = 128;
+}
+$lanseg = join '.', $a, $b, $c, $d;
+$evenodd = $branch % 2;
+
+
+#Convert Branch Number to Hex and tweak it
+$result = sprintf"%lx", $branch;
+$result = uc($result); 
+$len = length($result);
+$need = 5 - $len;
+until ($need == "0")
+	{
+	$result = "0" . $result;
+	$need--
+	}
+$vmac = $result;
+$xid = "CCC" . $result;
+$vmac =~ s/(...)/$1\./;
+$vmac = lc($vmac);
+
+
+#Decide which ICORE branch is on.
+if ($b == 166 && $c < 128)
+	{
+	#26418 ICORE
+#	print "Is 26418\n";
+	$dlci1 = "310";
+	$dlci2 = "393";
+	$dburtr = "rus699201awan46";
+	$dbunum = "18777403035";
+	$thrpeer = "161.161.140.254";
+	$wencryptkey1 = "30819F30 0D06092A 864886F7 0D010101 05000381 8D003081 89028181 00DAB8BB\n";
+	$wencryptkey2 = "   48FB1679 FD00D01F 83255903 D0A00732 609C26B9 D30A5BB5 FF3EF0DA 20D3BD17\n";
+	$wencryptkey3 = "   5AACD2B2 2602F7F0 F722949C 1604DB2E 09C1190D 845120B9 94B18F52 7CA01793\n";
+	$wencryptkey4 = "   D084BDB0 DD90B855 1FE7FA5C 9F755932 5DF2B7D8 67BAC8A6 39A81DB6 80034546\n";
+	$wencryptkey5 = "   ACEA1BF6 5F0128D9 F76DFDDB 397C970B 16EA527F 690DDFE2 351FD15A E7020301 0001";
+	$wencryptkey = join '', $wencryptkey1, $wencryptkey2, $wencryptkey3, $wencryptkey4, $wencryptkey5;
+	$bencryptkey1 = "30819F30 0D06092A 864886F7 0D010101 05000381 8D003081 89028181 00E07762\n";
+	$bencryptkey2 = "   2A7D4D53 BBC0D43E 9338E3D2 6351E91E 9F549F98 3879D09F 2E6BD9D3 935EF354\n";
+	$bencryptkey3 = "   89342DDE 1E6C3C55 54754502 67466BE5 17CC75F5 69F40AC6 50EAD20F D762A354\n";
+	$bencryptkey4 = "   8433F522 B2E562AA 3DC4EC10 12991A75 5403EEAD B46E1E4B 9A448A93 5B136BEE\n";
+	$bencryptkey5 = "   0A136936 6DB62B68 8E378CF7 432D946E 99484AC6 73E37378 EE216B1E 49020301 0001";
+	$bencryptkey = join '', $bencryptkey1, $bencryptkey2, $bencryptkey3, $bencryptkey4, $bencryptkey5;
+	$wcorertr = "rnj1903ba07";
+	$bcorertr = "rus699201awan11";
+	$wcap = "RNJ1903BA07-VPN";
+	$bcap = "RUS699201AWAN11-VPN";
+	if ($evenodd == "0")
+		{
+		#Is even
+		$pripeer = "161.161.237.254";
+		$secpeer = "161.161.237.253";
+		}
+	else
+		{
+		#Is odd
+		$pripeer = "161.161.237.253";
+		$secpeer = "161.161.237.254";
+		}
+	}
+if ($b == 166 && $c > 127)
+	{
+	#Icore21117
+#	print "Is 21117\n";
+	$dlci1 = "311";
+	$dlci2 = "394";
+	$dburtr = "rus699201awan47";
+	$dbunum = "18884799756";
+	$thrpeer = "161.161.140.253";
+	$wencryptkey1 = "30819F30 0D06092A 864886F7 0D010101 05000381 8D003081 89028181 00B28B15\n";
+	$wencryptkey2 = "   7DC8090C 8B60A5CD D162CCBF 9B8AFD42 59EAA96F 3B1FDB7B B9A251DD 3B3AF985\n";
+	$wencryptkey3 = "   C0B1C36C C4CED555 C3261221 FEB02537 6A95732B 72266C56 99A9F290 FD634E7A\n";
+	$wencryptkey4 = "   E1BE4B16 53E53E43 378D843C 2FBF3CA5 B6C16387 ADE2877F 6A156EB4 1578E13F\n";
+	$wencryptkey5 = "   B7A85C38 5DC2FA14 EE6F8B7C E2872D65 0FB499F7 14EE8379 36F3800C 47020301 0001";
+	$wencryptkey = join '', $wencryptkey1, $wencryptkey2, $wencryptkey3, $wencryptkey4, $wencryptkey5;
+	$bencryptkey1 = "30819F30 0D06092A 864886F7 0D010101 05000381 8D003081 89028181 00B04EE3\n";
+	$bencryptkey2 = "   B54BADC1 820B12CB FF1B5A87 20C65704 350D8B14 AEBB6077 96BC5FE8 B9365D18\n";
+	$bencryptkey3 = "   98A69345 695613D2 5BABD790 10C8D5CB 08559A99 8DCAC5FE 70B98515 CF75EFB1\n";
+	$bencryptkey4 = "   7C78704C 820D6DDA 5355084B CA9FFD37 301D1B43 E6D06E5A 31D899B3 DA76564F\n";
+	$bencryptkey5 = "   3B70F9BA 7D7391B9 226990E3 9C9522A0 35883A83 98029E2D 5E240ACB EB020301 0001";
+	$bencryptkey = join '', $bencryptkey1, $bencryptkey2, $bencryptkey3, $bencryptkey4, $bencryptkey5;
+	$wcorertr = "rnj1903ba08";
+        $bcorertr = "rus699201awan02";
+        $wcap = "RNJ1903BA08-VPN";
+        $bcap = "RUS699201AWAN02-VPN";
+	if ($evenodd == "0")
+		{
+		#Is Even
+		$pripeer = "161.161.237.252";
+		$secpeer = "161.161.237.251";
+		}
+	else
+		{
+		#Is Odd
+		$pripeer = "161.161.237.251";
+		$secpeer = "161.161.237.252";
+		}
+	}
+if ($b == "167" && $c < 128)
+	{
+	#Icore27584
+#	print "Is 27584\n";
+	$dlci1 = "312";
+	$dlci2 = "395";
+	$dburtr = "rus699201awan48";
+	$dbunum = "18008835572";
+	$thrpeer = "161.161.140.252";
+	$wencryptkey1 = "30819F30 0D06092A 864886F7 0D010101 05000381 8D003081 89028181 00C88E6F\n";
+	$wencryptkey2 = "   F262798D 39747FAA B3E11621 49B1B141 BDC556F1 B2F0B613 055D52AE BB9866DB\n";
+	$wencryptkey3 = "   D9F7CA2A CCE950B9 B6D160A6 4B74CF09 ABE44E5E 171E550C 226807EF 314941A8\n";
+	$wencryptkey4 = "   00087470 9B810A1C CFAC07AF 01650A23 E00E8A09 A8CABAC6 F0FBEB49 F9AB2DA3\n";
+	$wencryptkey5 = "   05D9DF88 65D50BDB FD55B958 B9E35CF4 279C8C09 AAB6650A CA229F71 85020301 0001";
+	$wencryptkey = join '', $wencryptkey1, $wencryptkey2, $wencryptkey3, $wencryptkey4, $wencryptkey5;
+	$bencryptkey1 = "30819F30 0D06092A 864886F7 0D010101 05000381 8D003081 89028181 00AE97E7\n";
+	$bencryptkey2 = "   D4870AE3 90F27270 80CCBFF9 C3598C7D E77CC964 D655E06B C9D12909 E29498D1\n";
+	$bencryptkey3 = "   A1A5C50B 26FFF659 ED2F209D C0B567D3 49A92078 354ABA1D 44FCED03 76C5E751\n";
+	$bencryptkey4 = "   69770A41 FD03A1C4 E1F52D89 876F73F5 5B75E998 080386CE 2EA8F3E4 A5E75050\n";
+	$bencryptkey5 = "   40578F56 93647B99 74BE4BCA 29BF0EA6 2B33D36C 9431B82B FC25E358 1D020301 0001";
+	$bencryptkey = join '', $bencryptkey1, $bencryptkey2, $bencryptkey3, $bencryptkey4, $bencryptkey5;
+	$wcorertr = "rnj1903ba09";
+        $bcorertr = "rus699201awan03";
+        $wcap = "RNJ1903BA09-VPN";
+        $bcap = "RUS699201AWAN03-VPN";
+	if ($evenodd == "0")
+		{
+		#Is Even
+		$pripeer = "161.161.237.250";
+		$secpeer = "161.161.237.249";
+		}
+	else 
+		{
+		$pripeer = "161.161.237.249";
+		$secpeer = "161.161.237.250";
+		}
+	}
+
+if ($b == 167 && $c > 127)
+	{
+	$dlci1 = "318";
+	$dlci2 = "319\n" . "crypto map rus699201awan04\n";
+	#Icore International
+	$dburtr = "rus699201awan49";
+	$dbunum = "18002501574";
+	$thrpeer = "161.161.140.253";
+        $wcorertr = "rnj1903ba10";
+        $bcorertr = "rus699201awan04";
+        $wcap = "RNJ1903BA10-VPN";
+        $bcap = "RUS699201AWAN04-VPN";	
+	$wencryptkey = 
+"30819F30 0D06092A 864886F7 0D010101 05000381 8D003081 89028181 00BAA226\n" .
+"6A87B4C1 D2DB1BF9 89B18E86 961DFCF0 AB68A9E3 A6240513 75289500 A94A9282\n" .
+"A9045724 7503EFFA 407E3A5A 2AB6FFB0 F558223A 4882F189 0EB74C67 2B9925FB\n" .
+"F26392C7 9EB0FBDF BCE28159 2DDE12B6 48E59B5E A79A0135 9D1917CF 5AC719C4\n" .
+"73AF1E54 F5789203 02822AC2 5861F210 6612A7BB 2A9F8DAD 78463CA1 3D020301 0001\n";
+
+	$bencryptkey =
+"30819F30 0D06092A 864886F7 0D010101 05000381 8D003081 89028181 00BF1C3A\n" .
+"F0CC7AB6 F69487A0 4A1CA6F2 1660E813 CE508423 C845F0F3 346286A3 0B9CDD1D\n" .
+"51483C97 F9DEE64C 9A516EB6 81A07E26 11FE4135 F4C134DF DACE0548 F33B6F1F\n" .
+"94527754 33A9B90F 00380854 032D03B2 440DF8C6 8CAB1FC4 660D342C A8B690F9\n" .
+"25E2E675 B53ABBFA 118F3FE3 0247D32E 2F2758D9 C0E1293E E5B4C789 71020301 0001\n";
+
+
+	if ($evenodd == "0")
+		{
+		#Is even
+		$pripeer = "161.161.237.248";
+		$secpeer = "161.161.237.247";
+		}
+	else 
+		{
+		#Is odd
+		$pripeer = "161.161.237.247";
+		$secpeer = "161.161.237.248";
+		}
+	}
+
+#If not in an ICORE, Abort.
+unless ($pripeer)
+	{
+	print "Not in an ICORE!\n";
+	exit;
+	}
+
+#Calculate IPs from lan segment.
+$abc = join '.', $a, $b, $c;
+$ethd = $d + 1;
+$hubd = $ethd + 1;
+if ($d == "0")
+	{
+	$loopd = "254";
+	$sub1d = "162";
+	$sub2d = "182";
+	}
+if ($d == "32")
+	{
+	$loopd = "253";
+	$sub1d = "166";
+	$sub2d = "186";
+	}
+if ($d == "64")
+	{
+	$loopd = "252";
+	$sub1d = "170";
+	$sub2d = "190";
+	}
+if ($d == "96")
+	{
+	$loopd = "251";
+	$sub1d = "174";
+	$sub2d = "194";
+	}
+if ($d == "128")
+	{
+	$loopd = "250";
+	$sub1d = "178";
+	$sub2d = "198";
+	}
+
+unless ($loopd)
+	{
+	print "Last octet not a valid lan segment\n";
+	exit;
+	}
+
+
+#Create final variables 
+$route1d = $sub1d - 1;
+$route2d = $sub2d - 1;
+$eth = join '.', $abc, $ethd;
+$loop = join '.', $abc, $loopd;
+$sub1ip = join '.', $abc, $sub1d;
+$sub2ip = join '.', $abc, $sub2d;
+$wroute = join '.', $abc, $route1d;
+$broute = join '.', $abc, $route2d;
+$hubip = join '.', $abc, $hubd;
+
+#print "DLCI1:$dlci1\n", "DLCI2:$dlci2\n";
+#Generate the config, plug in variables.
+foreach (<TEMP>)
+	{
+	if ($icore == "29678" && $_=~ /permit tcp host/) {
+	next;
+	}
+	if ($branch =~ /640051/) {
+	s/bandwidth 56/bandwidth 256/;
+	}
+	if ($branch =~ /090059/) {
+	s/bandwidth 56/bandwidth 1544/;
+	}
+	if ($branch =~ /000142/) {
+	s/bandwidth 56/bandwidth 128/;
+	}
+	if ($branch =~ /000159/) {
+	s/bandwidth 56/bandwidth 1544/;
+	s/bandwidth 32/bandwidth 128/;
+	}
+	if ($branch =~ /000010/) {
+	s/bandwidth 56/bandwidth 128/;
+	}
+	if ($branch =~ /000971/) {
+	s/bandwidth 56/bandwidth 128/;
+	}
+	s/\$branch/$branch/g;
+	s/\$dburtr/$dburtr/g;
+	s/\$eth/$eth/g;
+	s/\$loop/$loop/g;
+	s/\$wencryptkey/$wencryptkey/g;
+	s/\$bencryptkey/$bencryptkey/g;
+	s/\$wcorertr/$wcorertr/g;
+	s/\$bcorertr/$bcorertr/g;
+	s/\$wcap/$wcap/g;
+	s/\$bcap/$bcap/g;
+	s/\$pripeer/$pripeer/g;
+	s/\$secpeer/$secpeer/g;
+	s/\$thrpeer/$thrpeer/g;
+	s/\$sub1ip/$sub1ip/g;
+	s/\$sub2ip/$sub2ip/g;
+	s/\$dlci1/$dlci1/g;
+	s/\$dlci2/$dlci2/g;
+	s/\$vmac/$vmac/g;
+	s/\$xid/$xid/g;
+	s/\$dbunum/$dbunum/g;
+	s/\$wroute/$wroute/g;
+	s/\$broute/$broute/g;
+	s/\$hubip/$hubip/g;
+	s/\$lanseg/$lanseg/g;
+	print OUT $_;
+	if ($option{w})
+		{
+		print "<BR>";
+		}
+
+	}
